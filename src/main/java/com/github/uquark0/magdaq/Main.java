@@ -1,6 +1,7 @@
 package com.github.uquark0.magdaq;
 
-import com.github.uquark0.magdaq.block.TradingTerminalBlock;
+import com.github.uquark0.magdaq.block.BlockList;
+import com.github.uquark0.magdaq.block.entity.BlockEntityTypeList;
 import com.github.uquark0.magdaq.util.Registrable;
 import net.fabricmc.api.ModInitializer;
 import org.apache.logging.log4j.LogManager;
@@ -13,10 +14,12 @@ public class Main implements ModInitializer {
     @Override
     public void onInitialize() {
         Registrable[] toRegister = new Registrable[] {
-                new TradingTerminalBlock(),
+                (Registrable) BlockList.TRADING_TERMINAL_BLOCK
         };
 
         for (Registrable r : toRegister)
             r.register(LOGGER);
+
+        BlockEntityTypeList.registerAll();
     }
 }
