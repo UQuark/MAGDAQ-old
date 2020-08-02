@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "magdaq:block/trading_terminal" },
+    "facing=east": { "model": "magdaq:block/trading_terminal", "y": 90 },
+    "facing=south": { "model": "magdaq:block/trading_terminal", "y": 180 },
+    "facing=west": { "model": "magdaq:block/trading_terminal", "y": 270 }
+  }
+}
