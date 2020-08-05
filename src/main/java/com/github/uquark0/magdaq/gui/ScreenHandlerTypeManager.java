@@ -10,7 +10,7 @@ public class ScreenHandlerTypeManager {
     public static void registerAll() {
         TRADING_TERMINAL_SCREEN_HANDLER_TYPE = ScreenHandlerRegistry.registerSimple(
                 TradingTerminalBlock.ID,
-                (i, playerInventory) -> new TradingTerminalScreenHandler(i)
+                (i, playerInventory) -> new TradingTerminalScreenHandler(i, null)
         );
     }
 }

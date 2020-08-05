@@ -2,7 +2,10 @@ package com.github.uquark0.magdaq.block;
 
 import com.github.uquark0.magdaq.Main;
 import com.github.uquark0.magdaq.block.entity.TradingTerminalBlockEntity;
-import net.minecraft.block.*;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockEntityProvider;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Material;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;

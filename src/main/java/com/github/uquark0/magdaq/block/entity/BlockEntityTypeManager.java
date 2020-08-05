@@ -2,14 +2,7 @@ package com.github.uquark0.magdaq.block.entity;
 
 import com.github.uquark0.magdaq.block.BlockManager;
 import com.github.uquark0.magdaq.block.TradingTerminalBlock;
-import com.github.uquark0.magdaq.gui.ScreenHandlerTypeManager;
 import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.registry.Registry;
 
 public class BlockEntityTypeManager {
