@@ -17,17 +17,17 @@ public class BuyLimitOrder extends BuyOrder implements Comparable<Order> {
         if (!(order instanceof BuyLimitOrder))
             throw new IllegalArgumentException("Can compare only with BuyLimitOrder");
         BuyLimitOrder b = (BuyLimitOrder) order;
-        return Long.compare(b.price.amount, price.amount);
+        return Long.compare(b.price.value, price.value);
     }
 
     @Override
     public void transact(int amount, MoneyAmount transactionPrice) {
-        if (transactionPrice.amount > price.amount)
+        if (transactionPrice.value > price.value)
             throw new IllegalArgumentException("Transaction price exceeds max price");
         if (amount > this.amount)
             throw new IllegalArgumentException("Transaction amount exceeds order amount");
         this.amount -= amount;
-        MoneyAmount sum = new MoneyAmount(transactionPrice.amount * amount);
+        MoneyAmount sum = new MoneyAmount(transactionPrice.value * amount);
         owner.reduceMoney(sum);
         owner.increaseStock(stock, amount);
     }

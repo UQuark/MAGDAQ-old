@@ -5,6 +5,7 @@ import net.minecraft.item.Item;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class MarketMaker {
     public final Item stock;
@@ -14,18 +15,14 @@ public class MarketMaker {
     private final ArrayList<BuyMarketOrder> buyMarket = new ArrayList<>();
     private final ArrayList<SellMarketOrder> sellMarket = new ArrayList<>();
 
-    private final ArrayList<Transaction> prints = new ArrayList<>();
+    private final ArrayList<Transaction> transactions = new ArrayList<>();
+
+    private final ArrayList<Subscriber> subs = new ArrayList<>();
 
     private long volume;
 
     public MarketMaker(Item stock) {
         this.stock = stock;
-    }
-
-    public Transaction[] getPrints() {
-        Transaction[] t = new Transaction[prints.size()];
-        prints.toArray(t);
-        return t;
     }
 
     public void putOrder(Order order) {
@@ -48,21 +45,36 @@ public class MarketMaker {
         resolve();
     }
 
+    public void subscribe(Subscriber sub) {
+        subs.add(sub);
+    }
+
+    public void unsubscribe(Subscriber sub) {
+        subs.remove(sub);
+    }
+
     public long getVolume() {
         return volume;
+    }
+
+    public List<Transaction> getTransactions() {
+        return (List<Transaction>) transactions.clone();
     }
 
     private void runTransaction(BuyOrder b, SellOrder s) {
         Transaction t = new Transaction(b, s);
         t.apply();
-        prints.add(t);
+        transactions.add(t);
         volume += t.amount;
+        for (Subscriber subscriber : subs) {
+            subscriber.notify(t);
+        }
     }
 
     private boolean isParity() {
         return (buyLimit.size() == 0) ||
                 (sellLimit.size() == 0) ||
-                (sellLimit.get(0).price.amount > buyLimit.get(0).price.amount);
+                (sellLimit.get(0).price.value > buyLimit.get(0).price.value);
     }
 
     private void resolve() {
@@ -94,48 +106,6 @@ public class MarketMaker {
                 buyLimit.remove(b);
             if (s.amount == 0)
                 sellLimit.remove(s);
-        }
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        Item stock = new Item(new Item.Settings());
-        MarketMaker mm = new MarketMaker(stock);
-
-        Broker fake = new Broker() {
-            @Override
-            public void reduceMoney(MoneyAmount amount) {
-
-            }
-
-            @Override
-            public void increaseMoney(MoneyAmount amount) {
-
-            }
-
-            @Override
-            public void reduceStock(Item stock, int amount) {
-
-            }
-
-            @Override
-            public void increaseStock(Item stock, int amount) {
-
-            }
-        };
-        mm.putOrder(new BuyLimitOrder(10, new MoneyAmount(5, 15), fake, stock));
-        mm.putOrder(new BuyLimitOrder(15, new MoneyAmount(5, 20), fake, stock));
-        mm.putOrder(new BuyLimitOrder(5, new MoneyAmount(5, 18), fake, stock));
-
-        Object lock = new Object();
-        synchronized (lock) {
-            lock.wait(100);
-        }
-
-        mm.putOrder(new SellLimitOrder(64, new MoneyAmount(5, 17), fake, stock));
-//        mm.putOrder(new SellMarketOrder(64, fake, stock));
-
-        for (Transaction t : mm.prints) {
-            System.out.println(t.toString());
         }
     }
 }

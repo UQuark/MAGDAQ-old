@@ -1,59 +1,156 @@
 package com.github.uquark0.magdaq.gui;
 
 import com.github.uquark0.magdaq.Main;
+import com.github.uquark0.magdaq.block.TradingTerminalBlock;
 import com.github.uquark0.magdaq.block.entity.TradingTerminalBlockEntity;
 import com.github.uquark0.magdaq.economy.Transaction;
+import com.github.uquark0.magdaq.economy.order.Subscriber;
 import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.network.ClientSidePacketRegistry;
 import net.fabricmc.fabric.api.network.ServerSidePacketRegistry;
+import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-public class TradingTerminalScreenHandler extends ScreenHandler {
-    public static final Identifier C2S_GET_STOCKS = new Identifier(Main.MODID, "c2s_get_stocks");
-    public static final Identifier C2S_GET_PRINTS = new Identifier(Main.MODID, "c2s_get_prints");
-    public static final Identifier C2S_UNREGISTER_HANDLER = new Identifier(Main.MODID, "c2s_unregister_handler");
-    public static final Identifier S2C_RECEIVE_STOCKS = new Identifier(Main.MODID, "s2c_receive_stocks");
-    public static final Identifier S2C_RECEIVE_PRINTS = new Identifier(Main.MODID, "s2c_receive_prints");
+public class TradingTerminalScreenHandler extends ScreenHandler implements Subscriber {
+    public static ScreenHandlerType<TradingTerminalScreenHandler> TRADING_TERMINAL_SCREEN_HANDLER_TYPE;
+    public static void register() {
+        TRADING_TERMINAL_SCREEN_HANDLER_TYPE = ScreenHandlerRegistry.registerSimple(
+                TradingTerminalBlock.ID,
+                (i, playerInventory) -> new TradingTerminalScreenHandler(i, null)
+        );
+    }
 
-    public static final HashMap<Integer, TradingTerminalScreenHandler> clientHandlers = new HashMap<>();
-    public static final HashMap<Integer, TradingTerminalScreenHandler> serverHandlers = new HashMap<>();
+    private static final HashMap<Integer, TradingTerminalScreenHandler> serverHandlers = new HashMap<>();
+    private static TradingTerminalScreenHandler clientHandler;
 
-    public int[] stocks;
-    public Prints prints;
+    private static void link(int syncId, TradingTerminalScreenHandler handler) {
+        serverHandlers.put(syncId, handler);
+    }
+
+    private static void unlink(int syncId) {
+        serverHandlers.remove(syncId);
+    }
+
+    private static final Identifier C2S_REQUEST_STOCKS = new Identifier(Main.MODID, "c2s_request_stocks");
+    private static final Identifier C2S_REQUEST_TRANSACTIONS = new Identifier(Main.MODID, "c2s_request_transactions");
+    private static final Identifier C2S_SUBSCRIBE = new Identifier(Main.MODID, "c2s_subscribe");
+    private static final Identifier C2S_UNSUBSCRIBE = new Identifier(Main.MODID, "c2s_unsubscribe");
+    private static final Identifier C2S_UNLINK = new Identifier(Main.MODID, "c2s_unlink");
+
+    private static final Identifier S2C_RETURN_STOCKS = new Identifier(Main.MODID, "s2c_return_stocks");
+    private static final Identifier S2C_RETURN_TRANSACTIONS = new Identifier(Main.MODID, "s2c_return_transactions");
+    private static final Identifier S2C_NOTIFY_TRANSACTION = new Identifier(Main.MODID, "s2c_notify_transaction");
+
+    public static void registerC2SPackets() {
+        ServerSidePacketRegistry.INSTANCE.register(C2S_REQUEST_STOCKS, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
+            List<Item> items = handler.owner.getStocks();
+            int[] ids = new int[items.size()];
+            for (int i = 0; i < items.size(); i++)
+                ids[i] = Registry.ITEM.getRawId(items.get(i));
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeIntArray(ids);
+            ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_RETURN_STOCKS, buf);
+        });
+
+        ServerSidePacketRegistry.INSTANCE.register(C2S_REQUEST_TRANSACTIONS, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
+            int stock = packetByteBuf.readInt();
+            List<Transaction> transactions = handler.owner.getTransactions(Registry.ITEM.get(stock));
+            long[] prices = new long[transactions.size()];
+            int[] amounts = new int[transactions.size()];
+            int[] stocks = new int[transactions.size()];
+            for (int i = 0; i < transactions.size(); i++) {
+                Transaction.RawInfo rawInfo = new Transaction.RawInfo(transactions.get(i));
+                prices[i] = rawInfo.price;
+                amounts[i] = rawInfo.amount;
+                stocks[i] = rawInfo.stock;
+            }
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeInt(transactions.size());
+            buf.writeLongArray(prices);
+            buf.writeIntArray(amounts);
+            buf.writeIntArray(stocks);
+            ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_RETURN_TRANSACTIONS, buf);
+        });
+
+        ServerSidePacketRegistry.INSTANCE.register(C2S_SUBSCRIBE, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
+            int stock = packetByteBuf.readInt();
+            handler.owner.subscribe(Registry.ITEM.get(stock), handler);
+            handler.subscriber = packetContext.getPlayer();
+        });
+
+        ServerSidePacketRegistry.INSTANCE.register(C2S_UNSUBSCRIBE, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
+            int stock = packetByteBuf.readInt();
+            handler.owner.unsubscribe(Registry.ITEM.get(stock), handler);
+            handler.subscriber = null;
+        });
+
+        ServerSidePacketRegistry.INSTANCE.register(C2S_UNLINK, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            unlink(syncId);
+        });
+    }
+
+    public static void registerS2CPackets() {
+        ClientSidePacketRegistry.INSTANCE.register(S2C_RETURN_STOCKS, (packetContext, packetByteBuf) -> {
+            int[] ids = packetByteBuf.readIntArray();
+            List<Item> stocks = new ArrayList<>();
+            for (int id : ids) {
+                stocks.add(Registry.ITEM.get(id));
+            }
+            clientHandler.stocks = stocks;
+        });
+
+        ClientSidePacketRegistry.INSTANCE.register(S2C_RETURN_TRANSACTIONS, (packetContext, packetByteBuf) -> {
+            int size = packetByteBuf.readInt();
+            long[] prices = packetByteBuf.readLongArray(null);
+            int[] amounts = packetByteBuf.readIntArray();
+            int[] stocks = packetByteBuf.readIntArray();
+            List<Transaction> transactions = new ArrayList<>();
+            for (int i = 0; i < size; i++)
+                transactions.add(new Transaction(new Transaction.RawInfo(prices[i], amounts[i], stocks[i])));
+            clientHandler.transactions = transactions;
+        });
+
+        ClientSidePacketRegistry.INSTANCE.register(S2C_NOTIFY_TRANSACTION, (packetContext, packetByteBuf) -> {
+            long price = packetByteBuf.readLong();
+            int amount = packetByteBuf.readInt();
+            int stock = packetByteBuf.readInt();
+            clientHandler.transactions.add(new Transaction(new Transaction.RawInfo(price, amount, stock)));
+        });
+    }
 
     private final TradingTerminalBlockEntity owner;
 
-    public static class Prints {
-        public final long[] prices;
-        public final int[] amounts;
-        public final int count;
+    private PlayerEntity subscriber;
 
-        public Prints(int count) {
-            prices = new long[count];
-            amounts = new int[count];
-            this.count = count;
-        }
-
-        public Prints(long[] prices, int[] amounts) {
-            if (prices.length != amounts.length)
-                throw new IllegalArgumentException("Prices count and amounts count are not equal");
-            this.prices = prices;
-            this.amounts = amounts;
-            this.count = prices.length;
-        }
-    }
+    public List<Item> stocks;
+    public List<Transaction> transactions;
 
     public TradingTerminalScreenHandler(int syncId, TradingTerminalBlockEntity owner) {
-        super(ScreenHandlerTypeManager.TRADING_TERMINAL_SCREEN_HANDLER_TYPE, syncId);
+        super(TRADING_TERMINAL_SCREEN_HANDLER_TYPE, syncId);
         this.owner = owner;
-        register();
+        if (owner == null)
+            clientHandler = this;
+        else
+            link(syncId, this);
     }
 
     @Override
@@ -61,107 +158,40 @@ public class TradingTerminalScreenHandler extends ScreenHandler {
         return true;
     }
 
-    public int[] getStocks() {
-        if (owner == null) {
-            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-            buf.writeInt(syncId);
-            ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_GET_STOCKS, buf);
-            return null;
-        } else {
-            Item[] stocks = owner.getStocks();
-            int[] ids = new int[stocks.length];
-
-            for (int i = 0; i < stocks.length; i++)
-                ids[i] = Registry.ITEM.getRawId(stocks[i]);
-
-            return ids;
-        }
-    }
-
-    public Prints getPrints(int item) {
-        if (owner == null) {
-            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-            buf.writeInt(syncId);
-            buf.writeInt(item);
-            ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_GET_PRINTS, buf);
-            return null;
-        } else {
-            Transaction[] t = owner.getPrints(Registry.ITEM.get(item));
-            Prints p = new Prints(t.length);
-            for (int i = 0; i < t.length; i++) {
-                p.prices[i] = t[i].price.amount;
-                p.amounts[i] = t[i].amount;
-            }
-            return p;
-        }
-    }
-    
-    public static void registerC2SPackets() {
-        ServerSidePacketRegistry.INSTANCE.register(C2S_GET_STOCKS, (packetContext, packetByteBuf) -> {
-            int syncId = packetByteBuf.readInt();
-            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
-            if (handler == null)
-                return;
-
-            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-            buf.writeInt(syncId);
-            buf.writeIntArray(handler.getStocks());
-            ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_RECEIVE_STOCKS, buf);
-        });
-
-        ServerSidePacketRegistry.INSTANCE.register(C2S_GET_PRINTS, (packetContext, packetByteBuf) -> {
-            int syncId = packetByteBuf.readInt();
-            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
-            if (handler == null)
-                return;
-
-            Prints p = handler.getPrints(packetByteBuf.readInt());
-            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-            buf.writeInt(syncId);
-            buf.writeLongArray(p.prices);
-            buf.writeIntArray(p.amounts);
-            ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_RECEIVE_PRINTS, buf);
-        });
-
-        ServerSidePacketRegistry.INSTANCE.register(C2S_UNREGISTER_HANDLER, (packetContext, packetByteBuf) -> {
-            int syncId = packetByteBuf.readInt();
-            serverHandlers.remove(syncId);
-        });
-    }
-
-    public void register() {
-        if (owner == null)
-            clientHandlers.put(syncId, this);
-        else
-            serverHandlers.put(syncId, this);
-    }
-
-    public void unregister() {
-        clientHandlers.remove(syncId);
+    public void requestStocks() {
         PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
         buf.writeInt(syncId);
-        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_UNREGISTER_HANDLER, buf);
+        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_REQUEST_STOCKS, buf);
     }
 
-    public static void registerS2CPackets() {
-        ClientSidePacketRegistry.INSTANCE.register(S2C_RECEIVE_STOCKS, (packetContext, packetByteBuf) -> {
-            int syncId = packetByteBuf.readInt();
-            TradingTerminalScreenHandler handler = clientHandlers.get(syncId);
-            if (handler == null)
-                return;
+    public void requestTransactions(Item stock) {
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeInt(syncId);
+        buf.writeInt(Registry.ITEM.getRawId(stock));
+        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_REQUEST_TRANSACTIONS, buf);
+    }
 
-            handler.stocks = packetByteBuf.readIntArray();
-        });
+    public void subscribe(Item stock) {
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeInt(syncId);
+        buf.writeInt(Registry.ITEM.getRawId(stock));
+        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_SUBSCRIBE, buf);
+    }
 
-        ClientSidePacketRegistry.INSTANCE.register(S2C_RECEIVE_PRINTS, (packetContext, packetByteBuf) -> {
-            int syncId = packetByteBuf.readInt();
-            TradingTerminalScreenHandler handler = clientHandlers.get(syncId);
-            if (handler == null)
-                return;
+    public void unsubscribe(Item stock) {
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeInt(syncId);
+        buf.writeInt(Registry.ITEM.getRawId(stock));
+        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_UNSUBSCRIBE, buf);
+    }
 
-            long[] prices = packetByteBuf.readLongArray(null);
-            int[] amounts = packetByteBuf.readIntArray();
-            handler.prints = new Prints(prices, amounts);
-        });
+    @Override
+    public void notify(Transaction t) {
+        Transaction.RawInfo rawInfo = new Transaction.RawInfo(t);
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeLong(rawInfo.price);
+        buf.writeInt(rawInfo.amount);
+        buf.writeInt(rawInfo.stock);
+        ServerSidePacketRegistry.INSTANCE.sendToPlayer(subscriber, S2C_NOTIFY_TRANSACTION, buf);
     }
 }

@@ -3,9 +3,8 @@ package com.github.uquark0.magdaq.economy;
 import com.github.uquark0.magdaq.Main;
 import net.minecraft.item.Item;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Market {
@@ -19,7 +18,7 @@ public class Market {
         marketMakers.put(stock, new MarketMaker(stock));
     }
 
-    public Item[] getStocks() {
+    public List<Item> getStocks() {
         Set<Item> stocks = marketMakers.keySet();
         Stream<Item> sorted = stocks.stream().sorted((i1, i2) -> {
             long v1 = Main.MARKET.getMarketMaker(i1).getVolume();
@@ -27,13 +26,6 @@ public class Market {
             return Long.compare(v2, v1);
         });
 
-        Item[] items = new Item[stocks.size()];
-        Iterator<Item> iterator = sorted.iterator();
-        int i = 0;
-        while (iterator.hasNext()) {
-            items[i] = iterator.next();
-            i++;
-        }
-        return items;
+        return sorted.collect(Collectors.toList());
     }
 }

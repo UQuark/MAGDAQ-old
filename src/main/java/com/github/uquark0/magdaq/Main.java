@@ -5,9 +5,8 @@ import com.github.uquark0.magdaq.block.entity.BlockEntityTypeManager;
 import com.github.uquark0.magdaq.economy.Broker;
 import com.github.uquark0.magdaq.economy.Market;
 import com.github.uquark0.magdaq.economy.MoneyAmount;
-import com.github.uquark0.magdaq.economy.order.BuyLimitOrder;
-import com.github.uquark0.magdaq.economy.order.SellMarketOrder;
-import com.github.uquark0.magdaq.gui.ScreenHandlerTypeManager;
+import com.github.uquark0.magdaq.economy.order.BuyMarketOrder;
+import com.github.uquark0.magdaq.economy.order.SellLimitOrder;
 import com.github.uquark0.magdaq.gui.TradingTerminalScreenHandler;
 import com.github.uquark0.magdaq.util.Registrable;
 import net.fabricmc.api.ModInitializer;
@@ -31,9 +30,11 @@ public class Main implements ModInitializer {
             r.register(LOGGER);
 
         BlockEntityTypeManager.registerAll();
-        ScreenHandlerTypeManager.registerAll();
+        TradingTerminalScreenHandler.register();
         TradingTerminalScreenHandler.registerC2SPackets();
-
+        MARKET.addStock(Items.DIAMOND);
+        MARKET.addStock(Items.GOLD_INGOT);
+        MARKET.addStock(Items.IRON_INGOT);
         Broker fake = new Broker() {
             @Override
             public void reduceMoney(MoneyAmount amount) {
@@ -55,21 +56,9 @@ public class Main implements ModInitializer {
 
             }
         };
-
-        MARKET.addStock(Items.DIAMOND);
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(10, new MoneyAmount(5, 11), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(15, new MoneyAmount(5, 22), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(5, new MoneyAmount(5, 33), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(4, new MoneyAmount(5, 0), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(12, new MoneyAmount(5, 22), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(5, new MoneyAmount(5, 44), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyLimitOrder(11, new MoneyAmount(5, 11), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellMarketOrder(128, fake, Items.DIAMOND));
-        MARKET.addStock(Items.IRON_INGOT);
-        MARKET.getMarketMaker(Items.IRON_INGOT).putOrder(new BuyLimitOrder(5, new MoneyAmount(5, 11), fake, Items.IRON_INGOT));
-        MARKET.getMarketMaker(Items.IRON_INGOT).putOrder(new SellMarketOrder(10, fake, Items.IRON_INGOT));
-        MARKET.addStock(Items.GOLD_INGOT);
-        MARKET.getMarketMaker(Items.GOLD_INGOT).putOrder(new BuyLimitOrder(1, new MoneyAmount(5, 11), fake, Items.GOLD_INGOT));
-        MARKET.getMarketMaker(Items.GOLD_INGOT).putOrder(new SellMarketOrder(10, fake, Items.GOLD_INGOT));
+        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(15, new MoneyAmount(5, 1), fake, Items.DIAMOND));
+        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(7, new MoneyAmount(5, 2), fake, Items.DIAMOND));
+        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(21, new MoneyAmount(5, 0), fake, Items.DIAMOND));
+        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyMarketOrder(64, fake, Items.DIAMOND));
     }
 }

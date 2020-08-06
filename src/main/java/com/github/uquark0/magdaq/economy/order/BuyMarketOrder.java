@@ -14,7 +14,7 @@ public class BuyMarketOrder extends BuyOrder {
         if (amount > this.amount)
             throw new IllegalArgumentException("Transaction amount exceeds order amount");
         this.amount -= amount;
-        MoneyAmount sum = new MoneyAmount(transactionPrice.amount * amount);
+        MoneyAmount sum = new MoneyAmount(transactionPrice.value * amount);
         owner.reduceMoney(sum);
         owner.increaseStock(stock, amount);
     }

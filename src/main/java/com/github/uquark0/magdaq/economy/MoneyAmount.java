@@ -1,26 +1,26 @@
 package com.github.uquark0.magdaq.economy;
 
 public class MoneyAmount implements Comparable<MoneyAmount> {
-    public final long amount;
+    public final long value;
 
-    public MoneyAmount(long amount) {
-        this.amount = amount;
+    public MoneyAmount(long value) {
+        this.value = value;
     }
 
     public MoneyAmount(int whole, int fraction) {
-        this.amount = whole * 10000 + fraction * 100;
+        this.value = whole * 10000 + fraction * 100;
     }
 
     public long getWhole() {
-        return amount / 10000;
+        return value / 10000;
     }
 
     public long getFraction() {
-        return (amount % 10000) / 100;
+        return (value % 10000) / 100;
     }
 
     @Override
     public int compareTo(MoneyAmount other) {
-        return Long.compare(amount, other.amount);
+        return Long.compare(value, other.value);
     }
 }

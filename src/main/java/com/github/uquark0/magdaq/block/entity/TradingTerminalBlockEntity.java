@@ -1,10 +1,10 @@
 package com.github.uquark0.magdaq.block.entity;
 
 import com.github.uquark0.magdaq.Main;
-import com.github.uquark0.magdaq.economy.Broker;
-import com.github.uquark0.magdaq.economy.MoneyAmount;
 import com.github.uquark0.magdaq.economy.Transaction;
+import com.github.uquark0.magdaq.economy.order.Subscriber;
 import com.github.uquark0.magdaq.gui.TradingTerminalScreenHandler;
+import net.minecraft.block.Fertilizable;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -16,17 +16,18 @@ import net.minecraft.text.TranslatableText;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-public class TradingTerminalBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, Broker {
+public class TradingTerminalBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, Subscriber {
+    private final HashMap<Item, ArrayList<Subscriber>> stockSubs = new HashMap<>();
+
     public TradingTerminalBlockEntity() {
         super(BlockEntityTypeManager.TRADING_TERMINAL_BLOCK_ENTITY_TYPE);
     }
 
-    private HashMap<Item, ArrayList<TradingTerminalScreenHandler>> subscribers = new HashMap<>();
-
     @Override
     public Text getDisplayName() {
-        return new TranslatableText("gui.trading_terminal.title");
+        return new TranslatableText("gui.container.trading_terminal");
     }
 
     @Override
@@ -34,35 +35,38 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
         return new TradingTerminalScreenHandler(syncId, this);
     }
 
-    public Item[] getStocks() {
+    @Override
+    public void notify(Transaction t) {
+        ArrayList<Subscriber> subs = stockSubs.get(t.stock);
+        if (subs != null)
+            for (Subscriber s : subs)
+                s.notify(t);
+    }
+
+    public List<Item> getStocks() {
         return Main.MARKET.getStocks();
     }
 
-    public Transaction[] getPrints(Item stock) {
-        return Main.MARKET.getMarketMaker(stock).getPrints();
+    public List<Transaction> getTransactions(Item stock) {
+        return Main.MARKET.getMarketMaker(stock).getTransactions();
     }
 
-    public void subscribe(Item stock, int syncId) {
-
+    public void subscribe(Item stock, Subscriber sub) {
+        ArrayList<Subscriber> subs = stockSubs.computeIfAbsent(stock, k -> {
+            Main.MARKET.getMarketMaker(stock).subscribe(this);
+            return new ArrayList<>();
+        });
+        subs.add(sub);
     }
 
-    @Override
-    public void reduceMoney(MoneyAmount amount) {
-
-    }
-
-    @Override
-    public void increaseMoney(MoneyAmount amount) {
-
-    }
-
-    @Override
-    public void reduceStock(Item stock, int amount) {
-
-    }
-
-    @Override
-    public void increaseStock(Item stock, int amount) {
-
+    public void unsubscribe(Item stock, Subscriber sub) {
+        ArrayList<Subscriber> subs = stockSubs.get(stock);
+        if (subs == null)
+            return;
+        subs.remove(sub);
+        if (subs.size() == 0) {
+            Main.MARKET.getMarketMaker(stock).unsubscribe(this);
+            stockSubs.remove(stock);
+        }
     }
 }

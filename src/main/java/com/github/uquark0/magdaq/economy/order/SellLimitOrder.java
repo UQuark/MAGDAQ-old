@@ -17,17 +17,17 @@ public class SellLimitOrder extends SellOrder implements Comparable<Order> {
         if (!(order instanceof SellLimitOrder))
             throw new IllegalArgumentException("Can compare only with SellLimitOrder");
         SellLimitOrder s = (SellLimitOrder) order;
-        return Long.compare(price.amount, s.price.amount);
+        return Long.compare(price.value, s.price.value);
     }
 
     @Override
     public void transact(int amount, MoneyAmount transactionPrice) {
-        if (transactionPrice.amount < price.amount)
+        if (transactionPrice.value < price.value)
             throw new IllegalArgumentException("Transaction price exceeds min price");
         if (amount > this.amount)
             throw new IllegalArgumentException("Transaction amount exceeds order amount");
         this.amount -= amount;
-        MoneyAmount sum = new MoneyAmount(transactionPrice.amount * amount);
+        MoneyAmount sum = new MoneyAmount(transactionPrice.value * amount);
         owner.increaseMoney(sum);
         owner.reduceStock(stock, amount);
     }
