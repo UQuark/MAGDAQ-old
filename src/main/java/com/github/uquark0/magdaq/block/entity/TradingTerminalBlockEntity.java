@@ -1,10 +1,10 @@
 package com.github.uquark0.magdaq.block.entity;
 
 import com.github.uquark0.magdaq.Main;
+import com.github.uquark0.magdaq.economy.Quotation;
 import com.github.uquark0.magdaq.economy.Transaction;
-import com.github.uquark0.magdaq.economy.order.Subscriber;
-import com.github.uquark0.magdaq.gui.TradingTerminalScreenHandler;
-import net.minecraft.block.Fertilizable;
+import com.github.uquark0.magdaq.economy.Subscriber;
+import com.github.uquark0.magdaq.gui.container.TradingTerminalScreenHandler;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -36,11 +36,19 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
     }
 
     @Override
-    public void notify(Transaction t) {
+    public void notifyTransaction(Transaction t) {
         ArrayList<Subscriber> subs = stockSubs.get(t.stock);
         if (subs != null)
             for (Subscriber s : subs)
-                s.notify(t);
+                s.notifyTransaction(t);
+    }
+
+    @Override
+    public void notifyQuotation(Quotation q) {
+        ArrayList<Subscriber> subs = stockSubs.get(q.stock);
+        if (subs != null)
+            for (Subscriber s : subs)
+                s.notifyQuotation(q);
     }
 
     public List<Item> getStocks() {
@@ -49,6 +57,10 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
 
     public List<Transaction> getTransactions(Item stock) {
         return Main.MARKET.getMarketMaker(stock).getTransactions();
+    }
+
+    public Quotation getQuotation(Item stock) {
+        return Main.MARKET.getMarketMaker(stock).getQuotation();
     }
 
     public void subscribe(Item stock, Subscriber sub) {
@@ -68,5 +80,18 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
             Main.MARKET.getMarketMaker(stock).unsubscribe(this);
             stockSubs.remove(stock);
         }
+    }
+
+    public void unsubscribe(Subscriber sub) {
+        ArrayList<Item> toRemove = new ArrayList<>();
+        stockSubs.forEach((item, subscribers) -> {
+            subscribers.remove(sub);
+            if (subscribers.size() == 0) {
+                Main.MARKET.getMarketMaker(item).unsubscribe(this);
+                toRemove.add(item);
+            }
+        });
+        for (Item item : toRemove)
+            stockSubs.remove(item);
     }
 }

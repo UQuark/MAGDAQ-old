@@ -61,14 +61,17 @@ public class MarketMaker {
         return (List<Transaction>) transactions.clone();
     }
 
+    public Quotation getQuotation() {
+        return new Quotation(buyLimit, sellLimit, stock);
+    }
+
     private void runTransaction(BuyOrder b, SellOrder s) {
         Transaction t = new Transaction(b, s);
         t.apply();
         transactions.add(t);
         volume += t.amount;
-        for (Subscriber subscriber : subs) {
-            subscriber.notify(t);
-        }
+        for (Subscriber subscriber : subs)
+            subscriber.notifyTransaction(t);
     }
 
     private boolean isParity() {
@@ -107,5 +110,8 @@ public class MarketMaker {
             if (s.amount == 0)
                 sellLimit.remove(s);
         }
+
+        for (Subscriber subscriber : subs)
+            subscriber.notifyQuotation(new Quotation(buyLimit, sellLimit, stock));
     }
 }

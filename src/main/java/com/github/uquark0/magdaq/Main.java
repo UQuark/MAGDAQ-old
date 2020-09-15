@@ -5,15 +5,19 @@ import com.github.uquark0.magdaq.block.entity.BlockEntityTypeManager;
 import com.github.uquark0.magdaq.economy.Broker;
 import com.github.uquark0.magdaq.economy.Market;
 import com.github.uquark0.magdaq.economy.MoneyAmount;
+import com.github.uquark0.magdaq.economy.order.BuyLimitOrder;
 import com.github.uquark0.magdaq.economy.order.BuyMarketOrder;
+import com.github.uquark0.magdaq.economy.order.Order;
 import com.github.uquark0.magdaq.economy.order.SellLimitOrder;
-import com.github.uquark0.magdaq.gui.TradingTerminalScreenHandler;
+import com.github.uquark0.magdaq.gui.container.TradingTerminalScreenHandler;
 import com.github.uquark0.magdaq.util.Registrable;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Random;
 
 public class Main implements ModInitializer {
     public static final String MODID = "magdaq";
@@ -56,9 +60,24 @@ public class Main implements ModInitializer {
 
             }
         };
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(15, new MoneyAmount(5, 1), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(7, new MoneyAmount(5, 2), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new SellLimitOrder(21, new MoneyAmount(5, 0), fake, Items.DIAMOND));
-        MARKET.getMarketMaker(Items.DIAMOND).putOrder(new BuyMarketOrder(64, fake, Items.DIAMOND));
+
+        final Random random = new Random();
+        new Thread(() -> {
+            while (true) {
+                Order order;
+                int amount = Math.abs(random.nextInt()) % 32;
+                MoneyAmount price = new MoneyAmount(Math.abs(random.nextInt()) % 6, Math.abs(random.nextInt()) % 100);
+                if (random.nextBoolean())
+                    order = new BuyLimitOrder(amount, price, fake, Items.DIAMOND);
+                else
+                    order = new SellLimitOrder(amount, price, fake, Items.DIAMOND);
+                MARKET.getMarketMaker(Items.DIAMOND).putOrder(order);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 }
