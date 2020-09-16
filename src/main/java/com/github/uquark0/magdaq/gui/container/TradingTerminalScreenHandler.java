@@ -3,6 +3,7 @@ package com.github.uquark0.magdaq.gui.container;
 import com.github.uquark0.magdaq.Main;
 import com.github.uquark0.magdaq.block.TradingTerminalBlock;
 import com.github.uquark0.magdaq.block.entity.TradingTerminalBlockEntity;
+import com.github.uquark0.magdaq.economy.MoneyAmount;
 import com.github.uquark0.magdaq.economy.Quotation;
 import com.github.uquark0.magdaq.economy.Transaction;
 import com.github.uquark0.magdaq.economy.Subscriber;
@@ -48,11 +49,13 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
     private static final Identifier C2S_UNSUBSCRIBE = new Identifier(Main.MODID, "c2s_unsubscribe");
     private static final Identifier C2S_UNLINK = new Identifier(Main.MODID, "c2s_unlink");
     private static final Identifier C2S_REQUEST_QUOTATION = new Identifier(Main.MODID, "c2s_request_quotation");
+    private static final Identifier C2S_REQUEST_BALANCE = new Identifier(Main.MODID, "c2s_request_balance");
 
     private static final Identifier S2C_RETURN_STOCKS = new Identifier(Main.MODID, "s2c_return_stocks");
     private static final Identifier S2C_RETURN_TRANSACTIONS = new Identifier(Main.MODID, "s2c_return_transactions");
     private static final Identifier S2C_NOTIFY_TRANSACTION = new Identifier(Main.MODID, "s2c_notify_transaction");
     private static final Identifier S2C_NOTIFY_QUOTATION = new Identifier(Main.MODID, "s2c_notify_quotation");
+    private static final Identifier S2C_NOTIFY_BALANCE = new Identifier(Main.MODID, "s2c_notify_balance");
 
     public static void registerC2SPackets() {
         ServerSidePacketRegistry.INSTANCE.register(C2S_REQUEST_STOCKS, (packetContext, packetByteBuf) -> {
@@ -126,6 +129,14 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
             buf.writeInt(rawInfo.stock);
             ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_NOTIFY_QUOTATION, buf);
         });
+
+        ServerSidePacketRegistry.INSTANCE.register(C2S_REQUEST_BALANCE, (packetContext, packetByteBuf) -> {
+            int syncId = packetByteBuf.readInt();
+            TradingTerminalScreenHandler handler = serverHandlers.get(syncId);
+            PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+            buf.writeLong(handler.owner.getBalance().value);
+            ServerSidePacketRegistry.INSTANCE.sendToPlayer(packetContext.getPlayer(), S2C_NOTIFY_BALANCE, buf);
+        });
     }
 
     public static void registerS2CPackets() {
@@ -165,6 +176,10 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
             int stock = packetByteBuf.readInt();
             clientHandler.updateQuotation(new Quotation(new Quotation.RawInfo(bidPrices, bidAmounts, askPrices, askAmounts, spread, stock)));
         });
+
+        ClientSidePacketRegistry.INSTANCE.register(S2C_NOTIFY_BALANCE, (packetContext, packetByteBuf) -> {
+            clientHandler.updateBalance(new MoneyAmount(packetByteBuf.readLong()));
+        });
     }
 
     private final TradingTerminalBlockEntity owner;
@@ -176,6 +191,7 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
     public List<Item> stocks;
     public List<Transaction> transactions;
     public Quotation quotation;
+    public MoneyAmount balance;
 
     public TradingTerminalScreenHandler(int syncId, TradingTerminalBlockEntity owner) {
         super(TRADING_TERMINAL_SCREEN_HANDLER_TYPE, syncId);
@@ -235,6 +251,10 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
         refreshQuotation = true;
     }
 
+    public void updateBalance(MoneyAmount moneyAmount) {
+        balance = moneyAmount;
+    }
+
     public boolean popRefreshTransactions() {
         if (refreshTransactions) {
             refreshTransactions = false;
@@ -258,6 +278,12 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
         ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_REQUEST_QUOTATION, buf);
     }
 
+    public void requestBalance() {
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeInt(syncId);
+        ClientSidePacketRegistry.INSTANCE.sendToServer(C2S_REQUEST_BALANCE, buf);
+    }
+
     @Override
     public void notifyTransaction(Transaction t) {
         Transaction.RawInfo rawInfo = new Transaction.RawInfo(t);
@@ -279,5 +305,12 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
         buf.writeLong(rawInfo.spread);
         buf.writeInt(rawInfo.stock);
         ServerSidePacketRegistry.INSTANCE.sendToPlayer(subscriber, S2C_NOTIFY_QUOTATION, buf);
+    }
+
+    @Override
+    public void notifyBalance(MoneyAmount moneyAmount) {
+        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
+        buf.writeLong(moneyAmount.value);
+        ServerSidePacketRegistry.INSTANCE.sendToPlayer(subscriber, S2C_NOTIFY_BALANCE, buf);
     }
 }

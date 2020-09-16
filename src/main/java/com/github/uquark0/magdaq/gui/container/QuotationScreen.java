@@ -6,6 +6,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.util.math.MatrixStack;
 
+import java.util.ArrayList;
+
 public class QuotationScreen {
     private final static int ASK_PADDING = 4;
     private final static int QUOTATION_CROP = 5;
@@ -15,6 +17,8 @@ public class QuotationScreen {
     private final int x, y, askPadding;
     private final MinecraftClient client;
     private final DrawableHelper helper;
+    private Quotation lastQuotation = null;
+    private ArrayList<Label> labels;
 
     public QuotationScreen(int x, int y, MinecraftClient client, DrawableHelper helper) {
         askPadding = client.textRenderer.getWidth("00.00 000") + ASK_PADDING;
@@ -30,6 +34,16 @@ public class QuotationScreen {
     public void render(MatrixStack matrices, Quotation quotation) {
         lbBid.render(matrices);
         lbAsk.render(matrices);
+
+        if (quotation == lastQuotation) {
+            for (Label l : labels)
+                l.render(matrices);
+            return;
+        }
+
+        lastQuotation = quotation;
+        labels = new ArrayList<>();
+
         int cy = y + lbBid.getHeight() + QUOTATION_PADDING;
         int drawn = 0;
         int i = 0;
@@ -45,6 +59,7 @@ public class QuotationScreen {
             String text = String.format("%d.%02d %d", quotation.bid.get(i).price.getWhole(), quotation.bid.get(i).price.getFraction(), amount);
             Label label = new Label(x, cy, text, 0xFFFFFF, client, helper);
             label.render(matrices);
+            labels.add(label);
 
             cy += label.getHeight() + QUOTATION_PADDING;
             drawn++;
@@ -66,6 +81,7 @@ public class QuotationScreen {
             String text = String.format("%d.%02d %d", quotation.ask.get(i).price.getWhole(), quotation.ask.get(i).price.getFraction(), amount);
             Label label = new Label(x + askPadding, cy, text, 0xFFFFFF, client, helper);
             label.render(matrices);
+            labels.add(label);
 
             cy += label.getHeight() + QUOTATION_PADDING;
             drawn++;

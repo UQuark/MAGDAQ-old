@@ -25,6 +25,9 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
     private static final int QUOTATION_X_OFFSET = 116;
     private static final int QUOTATION_Y_OFFSET = 152;
 
+    private static final int BALANCE_X_OFFSET = 216;
+    private static final int BALANCE_Y_OFFSET = 0;
+
     public static void register() {
         ScreenRegistry.register(
                 TradingTerminalScreenHandler.TRADING_TERMINAL_SCREEN_HANDLER_TYPE,
@@ -35,6 +38,7 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
     private List<StockButton> stockButtons;
     private PrintsScreen printsScreen;
     private QuotationScreen quotationScreen;
+    private BalanceScreen balanceScreen;
     private StockButton active;
 
     public TradingTerminalHandledScreen(TradingTerminalScreenHandler handler, PlayerInventory inventory, Text title) {
@@ -42,6 +46,7 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
         backgroundWidth = 256;
         backgroundHeight = 192;
         handler.requestStocks();
+        handler.requestBalance();
     }
 
     @Override
@@ -54,6 +59,7 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
         drawStocks(matrices);
         drawPrints(matrices);
         drawQuotation(matrices);
+        drawBalance(matrices);
     }
 
     private void drawStocks(MatrixStack matrices) {
@@ -102,6 +108,18 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
 
     private void initQuotationScreen() {
         quotationScreen = new QuotationScreen(QUOTATION_X_OFFSET, QUOTATION_Y_OFFSET, client, this);
+    }
+
+    private void drawBalance(MatrixStack matrices) {
+        if (handler.balance == null)
+            return;
+        if (balanceScreen == null)
+            initBalanceScreen();
+        balanceScreen.render(matrices, handler.balance);
+    }
+
+    private void initBalanceScreen() {
+        balanceScreen = new BalanceScreen(BALANCE_X_OFFSET, BALANCE_Y_OFFSET, client, this);
     }
 
     @Override

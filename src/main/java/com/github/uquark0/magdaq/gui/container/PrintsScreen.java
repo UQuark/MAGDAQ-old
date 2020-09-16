@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.util.math.MatrixStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PrintsScreen {
@@ -16,6 +17,8 @@ public class PrintsScreen {
     private final int x, y;
     private final MinecraftClient client;
     private final DrawableHelper helper;
+    private long lastTransactionsSize = -1;
+    private ArrayList<Label> labels;
 
     public PrintsScreen(int x, int y, MinecraftClient client, DrawableHelper helper) {
         this.x = x;
@@ -28,6 +31,16 @@ public class PrintsScreen {
 
     public void render(MatrixStack matrices, List<Transaction> transactions) {
         lbPrints.render(matrices);
+
+        if (transactions.size() == lastTransactionsSize) {
+            for (Label l : labels)
+                l.render(matrices);
+            return;
+        }
+
+        lastTransactionsSize = transactions.size();
+        labels = new ArrayList<>();
+
         int cy = y + lbPrints.getHeight() + PRINT_PADDING;
         for (int i = Math.max(transactions.size() - PRINT_CROP, 0); i < transactions.size(); i++) {
             Transaction t = transactions.get(i);
@@ -35,6 +48,7 @@ public class PrintsScreen {
             Label label = new Label(x, cy, text, 0xFFFFFF, client, helper);
             label.render(matrices);
             cy += label.getHeight() + PRINT_PADDING;
+            labels.add(label);
         }
     }
 }

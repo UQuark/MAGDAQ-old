@@ -23,6 +23,7 @@ public class Main implements ModInitializer {
     public static final String MODID = "magdaq";
     public static final Logger LOGGER = LogManager.getLogger();
     public static final Market MARKET = new Market();
+    public static final Random RANDOM = new Random();
 
     @Override
     public void onInitialize() {
@@ -61,13 +62,12 @@ public class Main implements ModInitializer {
             }
         };
 
-        final Random random = new Random();
         new Thread(() -> {
             while (true) {
                 Order order;
-                int amount = Math.abs(random.nextInt()) % 32;
-                MoneyAmount price = new MoneyAmount(6, 50 + Math.abs(random.nextInt()) % 20);
-                if (random.nextBoolean())
+                int amount = Math.abs(RANDOM.nextInt()) % 32;
+                MoneyAmount price = new MoneyAmount(6, 50 + Math.abs(RANDOM.nextInt()) % 20);
+                if (RANDOM.nextBoolean())
                     order = new BuyLimitOrder(amount, price, fake, Items.DIAMOND);
                 else
                     order = new SellLimitOrder(amount, price, fake, Items.DIAMOND);

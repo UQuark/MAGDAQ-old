@@ -1,6 +1,7 @@
 package com.github.uquark0.magdaq.block.entity;
 
 import com.github.uquark0.magdaq.Main;
+import com.github.uquark0.magdaq.economy.MoneyAmount;
 import com.github.uquark0.magdaq.economy.Quotation;
 import com.github.uquark0.magdaq.economy.Transaction;
 import com.github.uquark0.magdaq.economy.Subscriber;
@@ -19,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 
 public class TradingTerminalBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, Subscriber {
+    public MoneyAmount balance = new MoneyAmount(0);
+
     private final HashMap<Item, ArrayList<Subscriber>> stockSubs = new HashMap<>();
 
     public TradingTerminalBlockEntity() {
@@ -49,6 +52,13 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
         if (subs != null)
             for (Subscriber s : subs)
                 s.notifyQuotation(q);
+        balance = new MoneyAmount(Main.RANDOM.nextInt() % 10000);
+        notifyBalance(balance);
+    }
+
+    @Override
+    public void notifyBalance(MoneyAmount moneyAmount) {
+        stockSubs.forEach((item, subscribers) -> subscribers.forEach(subscriber -> subscriber.notifyBalance(moneyAmount)));
     }
 
     public List<Item> getStocks() {
@@ -61,6 +71,10 @@ public class TradingTerminalBlockEntity extends BlockEntity implements NamedScre
 
     public Quotation getQuotation(Item stock) {
         return Main.MARKET.getMarketMaker(stock).getQuotation();
+    }
+
+    public MoneyAmount getBalance() {
+        return balance;
     }
 
     public void subscribe(Item stock, Subscriber sub) {
