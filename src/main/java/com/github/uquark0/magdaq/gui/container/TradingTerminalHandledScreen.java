@@ -1,6 +1,5 @@
 package com.github.uquark0.magdaq.gui.container;
 
-import com.github.uquark0.magdaq.economy.Transaction;
 import com.github.uquark0.magdaq.gui.common.Button;
 import com.github.uquark0.magdaq.gui.common.ButtonListener;
 import net.fabricmc.fabric.api.client.screenhandler.v1.ScreenRegistry;
@@ -20,10 +19,11 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
     private static final int STOCK_BUTTONS_H = 20;
     private static final int STOCK_BUTTONS_PADDING = 2;
 
-    private static final int TRANSACTION_PRINTS_X_OFFSET = 216;
-    private static final int TRANSACTION_PRINTS_Y_OFFSET = 152;
-    private static final int TRANSACTION_PRINTS_PADDING = 2;
-    private static final int TRANSACTION_PRINTS_CROP = 6;
+    private static final int PRINTS_X_OFFSET = 216;
+    private static final int PRINTS_Y_OFFSET = 152;
+
+    private static final int QUOTATION_X_OFFSET = 116;
+    private static final int QUOTATION_Y_OFFSET = 152;
 
     public static void register() {
         ScreenRegistry.register(
@@ -33,7 +33,8 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
     }
 
     private List<StockButton> stockButtons;
-    private List<TransactionPrint> transactionPrints;
+    private PrintsScreen printsScreen;
+    private QuotationScreen quotationScreen;
     private StockButton active;
 
     public TradingTerminalHandledScreen(TradingTerminalScreenHandler handler, PlayerInventory inventory, Text title) {
@@ -52,6 +53,7 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
     protected void drawForeground(MatrixStack matrices, int mouseX, int mouseY) {
         drawStocks(matrices);
         drawPrints(matrices);
+        drawQuotation(matrices);
     }
 
     private void drawStocks(MatrixStack matrices) {
@@ -79,25 +81,27 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
             return;
         if (handler.transactions == null)
             return;
-        if (handler.popRefreshTransactions() || transactionPrints == null)
+        if (printsScreen == null)
             initTransactionPrints();
-        for (TransactionPrint p : transactionPrints)
-            p.render(matrices);
+        printsScreen.render(matrices, handler.transactions);
     }
 
     private void initTransactionPrints() {
-        transactionPrints = new ArrayList<>();
-        int y = TRANSACTION_PRINTS_Y_OFFSET;
-        for (int i = Math.max(handler.transactions.size() - TRANSACTION_PRINTS_CROP, 0); i < handler.transactions.size(); i++) {
-            Transaction t = handler.transactions.get(i);
-            TransactionPrint p = new TransactionPrint(t, TRANSACTION_PRINTS_X_OFFSET, y, client, this);
-            y += p.getHeight() + TRANSACTION_PRINTS_PADDING;
-            transactionPrints.add(p);
-        }
+        printsScreen = new PrintsScreen(PRINTS_X_OFFSET, PRINTS_Y_OFFSET, client, this);
+    }
+
+    private void drawQuotation(MatrixStack matrices) {
+        if (active == null)
+            return;
+        if (handler.quotation == null)
+            return;
+        if (quotationScreen == null)
+            initQuotationScreen();
+        quotationScreen.render(matrices, handler.quotation);
     }
 
     private void initQuotationScreen() {
-
+        quotationScreen = new QuotationScreen(QUOTATION_X_OFFSET, QUOTATION_Y_OFFSET, client, this);
     }
 
     @Override
@@ -143,11 +147,13 @@ public class TradingTerminalHandledScreen extends HandledScreen<TradingTerminalS
         if (active != null) {
             active.forcePop();
             handler.unsubscribe(active.item);
-            transactionPrints = null;
+            printsScreen = null;
+            quotationScreen = null;
         }
         active = (StockButton) newActive;
         if (active != null) {
             handler.requestTransactions(active.item);
+            handler.requestQuotation(active.item);
             handler.subscribe(active.item);
         }
     }

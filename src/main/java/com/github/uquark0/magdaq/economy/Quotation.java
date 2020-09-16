@@ -24,10 +24,20 @@ public class Quotation {
         public RawInfo(Quotation q) {
             bidPrices = new long[q.bid.size()];
             bidAmounts = new int[q.bid.size()];
-            askPrices = new long[q.bid.size()];
-            askAmounts = new int[q.bid.size()];
+            askPrices = new long[q.ask.size()];
+            askAmounts = new int[q.ask.size()];
             spread = q.spread.value;
             stock = Registry.ITEM.getRawId(q.stock);
+
+            for (int i = 0; i < q.bid.size(); i++) {
+                bidPrices[i] = q.bid.get(i).price.value;
+                bidAmounts[i] = q.bid.get(i).amount;
+            }
+
+            for (int i = 0; i < q.ask.size(); i++) {
+                askPrices[i] = q.ask.get(i).price.value;
+                askAmounts[i] = q.ask.get(i).amount;
+            }
         }
 
         public RawInfo(long[] bidPrices, int[] bidAmounts, long[] askPrices, int[] askAmounts, long spread, int stock) {

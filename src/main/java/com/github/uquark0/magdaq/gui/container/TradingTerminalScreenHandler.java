@@ -163,7 +163,7 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
             int[] askAmounts = packetByteBuf.readIntArray();
             long spread = packetByteBuf.readLong();
             int stock = packetByteBuf.readInt();
-            clientHandler.updateQuotations(new Quotation(new Quotation.RawInfo(bidPrices, bidAmounts, askPrices, askAmounts, spread, stock)));
+            clientHandler.updateQuotation(new Quotation(new Quotation.RawInfo(bidPrices, bidAmounts, askPrices, askAmounts, spread, stock)));
         });
     }
 
@@ -230,7 +230,7 @@ public class TradingTerminalScreenHandler extends ScreenHandler implements Subsc
         refreshTransactions = true;
     }
 
-    public void updateQuotations(Quotation q) {
+    public void updateQuotation(Quotation q) {
         quotation = q;
         refreshQuotation = true;
     }

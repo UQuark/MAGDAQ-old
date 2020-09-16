@@ -66,7 +66,7 @@ public class Main implements ModInitializer {
             while (true) {
                 Order order;
                 int amount = Math.abs(random.nextInt()) % 32;
-                MoneyAmount price = new MoneyAmount(Math.abs(random.nextInt()) % 6, Math.abs(random.nextInt()) % 100);
+                MoneyAmount price = new MoneyAmount(6, 50 + Math.abs(random.nextInt()) % 20);
                 if (random.nextBoolean())
                     order = new BuyLimitOrder(amount, price, fake, Items.DIAMOND);
                 else

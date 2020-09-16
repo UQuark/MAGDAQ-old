@@ -12,7 +12,7 @@ public class TransactionPrint {
     private final Label lbPrice, lbAmount;
 
     public TransactionPrint(Transaction transaction, int x, int y, MinecraftClient client, DrawableHelper helper) {
-        String price = String.format("%d.%d", transaction.price.getWhole(), transaction.price.getFraction());
+        String price = String.format("%d.%02d", transaction.price.getWhole(), transaction.price.getFraction());
         String amount = String.format("%d", transaction.amount);
         lbPrice = new Label(x, y, price, 0xFFFFFF, client, helper);
         lbAmount = new Label(x + Math.max(client.textRenderer.getWidth("00.00"), lbPrice.getWidth()) + AMOUNT_PADDING, y, amount, 0xFFFFFF, client, helper);
